@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id          String     @id @default(cuid())
+  firstName   String
+  lastName    String
+  phoneNumber String
+  email       String     @unique
+  password    String
+  role        UserRole
+  dof         String
+  sex         String
+  nationality String
+  address     String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  files       UserFile[]
+  status      String     @default("active")
+  registratioProcess String @default("pending")
+}
+
+model Teacher {
+  id          String     @id @default(cuid())
+  firstName   String
+  lastName    String
+  phoneNumber String
+  email       String     @unique
+  password    String
+  dof         String
+  sex         String
+  nationality String
+  address     String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  files       UserFile[]
+  status      String     @default("active")
+  registratioProcess String @default("pending")
+}
+
+model Student {
+  id                      String     @id @default(cuid())
+  firstName               String
+  lastName                String
+  phoneNumber             String?
+  email                   String     @unique
+  password                String
+  dof                     String
+  sex                     String
+  nationality             String
+  address                 String?
+  previousSchool          String?
+  previousSchoolAddress   String?
+  moreAboutYourself       String?
+  GCEAdvancedLevelResult  String?
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+  admisionRequestDocument UserFile[]
+  status                  String     @default("active")
+  registratioProcess String @default("pending")
+}
+
+enum UserRole {
+  admin
+  teacher
+  student
+  superadmin
+  admission_officer
+  finance_officer
+  transcript_officer
+  course_validator
+  registrar_officer
+  department_admin
+}
+
+model File {
+  id        String     @id @default(cuid())
+  fileName      String
+  originalName String
+  extension String
+  fileUrl       String
+  type      String
+  size      Int
+  fileType  FileType?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  UserFiles UserFile[]
+}
+
+model UserFile {
+  id        String   @id @default(cuid())
+  adminId   String?
+  teacherId String?
+  studentId String?
+  fileId    String
+  use       FileUses
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  admin   Admin?    @relation(fields: [adminId], references: [id])
+  teacher Teacher? @relation(fields: [teacherId], references: [id])
+  student Student? @relation(fields: [studentId], references: [id])
+
+  file File @relation(fields: [fileId], references: [id])
+}
+
+enum FileType {
+  document
+  image
+  video
+  audio
+}
+
+enum FileUses {
+  profile_picture
+  course_material
+  assignment
+  transcript
+  cv
+  certificate
+  admission_letter
+  admission_document
+  other
+}
+
+
+model Program{
+  id String @id @default(cuid())
+  name String
+  description String?
+  status String @default("active")
+  code String @unique
+  slug String @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  levels Level[]
+}
+
+model Level{
+  id String @id @default(cuid())
+  name String
+  description String?
+  status String @default("active")
+  code String @unique
+  slug String @unique
+  programId String
+  program Program @relation(fields: [programId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  semesters Semester[]
+}
+
+model Semester{
+  id String @id @default(cuid())
+  name String
+  description String?
+  levelId String
+  status String @default("active")
+  code String @unique
+  slug String @unique 
+  level Level @relation(fields: [levelId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AISession {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  title     String?   // Optional title for the session
+  messages  AIMessage[]
+
+  // You can add userId if linking with users in your system
+  // userId   String?
+  // user     User? @relation(fields: [userId], references: [id])
+  aiType AITYPE
+  previousSessionId String? @unique
+  prevSession AISession? @relation("SessionToPrevSession", fields: [previousSessionId], references: [id])
+  nextSession AISession? @relation("SessionToPrevSession")
+}
+enum AITYPE {
+  ACADEMIC
+}
+model AIMessage {
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  role        String       // e.g. 'user', 'model', 'function'
+  content     String?      // for normal text message
+
+  functionCall        FunctionCall[]       // optional relation for function call details
+  functionResponse    FunctionResponse[]   // optional relation for function response details
+
+  sessionId   String
+  session     AISession   @relation(fields: [sessionId], references: [id])
+}
+
+model FunctionCall {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  name        String   // e.g. findProgramIdByName
+  args        Json     // arguments sent
+
+  messageId   String   
+  message     AIMessage @relation(fields: [messageId], references: [id])
+  functionResponse FunctionResponse?
+}
+
+model FunctionResponse {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+  name        String   // e.g. findProgramIdByName
+  response    Json     // response data returned
+  functionCallId String @unique
+  functionCall FunctionCall @relation(fields: [functionCallId], references: [id])
+  messageId   String   
+  message     AIMessage @relation(fields: [messageId], references: [id])
+}
